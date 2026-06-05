@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'currency_settings_page.dart';
+import 'providers/finance_provider.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -7,6 +11,9 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF07006B);
     const Color bgColor = Color(0xFFF7F8FC);
+    
+    final provider = Provider.of<FinanceProvider>(context);
+    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -40,7 +47,14 @@ class DashboardPage extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CurrencySettingsPage(),
+                        ),
+                      );
+                    },
                     icon: const Icon(
                       Icons.settings,
                       color: primaryColor,
@@ -99,10 +113,10 @@ class DashboardPage extends StatelessWidget {
                   color: primaryColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'SALDO SAAT INI',
                       style: TextStyle(
                         color: Colors.white70,
@@ -110,10 +124,10 @@ class DashboardPage extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'Rp 12.450.000',
-                      style: TextStyle(
+                      currencyFormat.format(provider.currentBalance),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 23,
                         fontWeight: FontWeight.bold,
@@ -155,7 +169,9 @@ class DashboardPage extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: LinearProgressIndicator(
-                        value: 0.85,
+                        value: (provider.totalIncome + provider.totalExpense) == 0 
+                            ? 0.5 
+                            : provider.totalIncome / (provider.totalIncome + provider.totalExpense),
                         minHeight: 8,
                         backgroundColor: Colors.red.shade200,
                         valueColor: const AlwaysStoppedAnimation<Color>(
@@ -165,19 +181,19 @@ class DashboardPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Row(
-                      children: const [
+                      children: [
                         Text(
-                          'Rp 15.000.000',
-                          style: TextStyle(
+                          currencyFormat.format(provider.totalIncome),
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Spacer(),
+                        const Spacer(),
                         Text(
-                          'Rp 2.550.000',
-                          style: TextStyle(
+                          currencyFormat.format(provider.totalExpense),
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
@@ -282,94 +298,29 @@ class DashboardPage extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              const TransactionTile(
-                icon: Icons.local_cafe,
-                title: 'Kopi Kenangan',
-                date: 'Hari ini, 09:15',
-                amount: '- Rp 28.000',
-                isIncome: false,
-              ),
-              const TransactionTile(
-                icon: Icons.account_balance_wallet,
-                title: 'Gaji Bulanan',
-                date: 'Kemarin, 20:00',
-                amount: '+ Rp 8.500.000',
-                isIncome: true,
-              ),
-              const TransactionTile(
-                icon: Icons.directions_car,
-                title: 'Pertamina',
-                date: '22 Okt, 14:30',
-                amount: '- Rp 350.000',
-                isIncome: false,
-              ),
-              const TransactionTile(
-                icon: Icons.shopping_cart,
-                title: 'Indomaret',
-                date: '21 Okt, 18:20',
-                amount: '- Rp 124.500',
-                isIncome: false,
-              ),
-              const TransactionTile(
-                icon: Icons.play_arrow,
-                title: 'Transfer dari Ibu',
-                date: '20 Okt, 11:00',
-                amount: '+ Rp 500.000',
-                isIncome: true,
-              ),
+              if (provider.transactions.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: Text('Belum ada transaksi', style: TextStyle(color: Colors.black54)),
+                  ),
+                )
+              else
+                ...provider.transactions.take(5).map((tx) {
+                  final category = provider.categories.firstWhere((cat) => cat.id == tx.categoryId, orElse: () => provider.categories.first);
+                  return TransactionTile(
+                    icon: IconData(category.iconCodePoint, fontFamily: 'MaterialIcons'),
+                    title: tx.title,
+                    date: DateFormat('dd MMM yyyy, HH:mm').format(tx.date),
+                    amount: '${tx.isIncome ? '+' : '-'} ${currencyFormat.format(tx.amount)}',
+                    isIncome: tx.isIncome,
+                  );
+                }).toList(),
             ],
           ),
         ),
       ),
 
-      // TOMBOL PLUS
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: primaryColor,
-        onPressed: () {},
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-
-      // BOTTOM NAVIGATION
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 18,
-              offset: const Offset(0, 5),
-            )
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            BottomMenuItem(
-              icon: Icons.dashboard,
-              label: 'Beranda',
-              active: true,
-            ),
-            BottomMenuItem(
-              icon: Icons.receipt_long,
-              label: 'Transaksi',
-              active: false,
-            ),
-            BottomMenuItem(
-              icon: Icons.category_outlined,
-              label: 'Kategori',
-              active: false,
-            ),
-            BottomMenuItem(
-              icon: Icons.bar_chart,
-              label: 'Laporan',
-              active: false,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -504,63 +455,6 @@ class TransactionTile extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class BottomMenuItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-
-  const BottomMenuItem({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.active,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFF07006B);
-
-    if (active) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: primaryColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 17, color: Colors.black87),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 9,
-            color: Colors.black87,
-          ),
-        ),
-      ],
     );
   }
 }
